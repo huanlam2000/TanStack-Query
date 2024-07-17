@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { getStudents } from '../../apis/Student.api'
-import { Students as IStudents } from 'types/student.type'
-import { useQuery } from '@tanstack/react-query'
-import { useParams } from 'react-router-dom'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useQueryString } from 'utils/utils'
+import classNames from 'classnames'
+
+const STUDENT_PER_PAGE = 10
 
 export default function Students() {
   // const [students, setStudents] = useState<IStudents>([])
@@ -16,12 +16,17 @@ export default function Students() {
   //     .then((res) => setStudents(res.data))
   //     .finally(() => setIsLoading(false))
   // }, [])
+
   const queryString: { page?: string } = useQueryString()
   const page = Number(queryString.page) || 1
+
   const { data, isLoading } = useQuery({
     queryKey: ['students', page],
-    queryFn: () => getStudents(page, 10)
+    queryFn: () => getStudents(page, STUDENT_PER_PAGE),
+    placeholderData: keepPreviousData
   })
+  const totalStudentsCount = Number(data?.headers['x-total-count']) || 0
+  const totalPage = Math.ceil(totalStudentsCount / STUDENT_PER_PAGE)
 
   return (
     <div>
@@ -99,25 +104,55 @@ export default function Students() {
             <nav aria-label='Page navigation example'>
               <ul className='inline-flex -space-x-px'>
                 <li>
-                  <span className='cursor-not-allowed rounded-l-lg border border-gray-300 bg-white py-2 px-3 leading-tight text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white'>
-                    Previous
-                  </span>
+                  {page === 1 ? (
+                    <span className='cursor-not-allowed select-none rounded-l-lg border border-gray-300 bg-white py-2 px-3 leading-tight text-gray-500 hover:bg-gray-100 hover:text-gray-700 '>
+                      Previous
+                    </span>
+                  ) : (
+                    <Link
+                      to={`/students?page=${page - 1}`}
+                      className='rounded-l-lg border border-gray-300 bg-white py-2 px-3 leading-tight text-gray-500 hover:bg-gray-100 hover:text-gray-700 '
+                    >
+                      Previous
+                    </Link>
+                  )}
                 </li>
+                {Array(totalPage)
+                  .fill(0)
+                  .map((_, index) => {
+                    const pageNumber = index + 1
+                    const isActive = pageNumber === page
+                    return (
+                      <li key={index}>
+                        <Link
+                          className={classNames(
+                            'hover:bg-gray-10 border border-gray-300 py-2 px-3 leading-tight text-gray-500 hover:text-gray-700',
+                            {
+                              'bg-gray-200 text-gray-700': isActive,
+                              'bg-white text-gray-500': !isActive
+                            }
+                          )}
+                          to={`/students?page=${pageNumber}`}
+                        >
+                          {pageNumber}
+                        </Link>
+                      </li>
+                    )
+                  })}
+
                 <li>
-                  <a
-                    className='border border-gray-300 bg-white bg-white py-2 px-3 leading-tight text-gray-500 text-gray-500  hover:bg-gray-100 hover:bg-gray-100 hover:text-gray-700 hover:text-gray-700'
-                    href='/students?page=8'
-                  >
-                    1
-                  </a>
-                </li>
-                <li>
-                  <a
-                    className='rounded-r-lg border border-gray-300 bg-white py-2 px-3 leading-tight text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white'
-                    href='/students?page=1'
-                  >
-                    Next
-                  </a>
+                  {page === totalPage ? (
+                    <span className=' cursor-not-allowed select-none rounded-r-lg border border-gray-300 bg-white py-2 px-3 leading-tight text-gray-500 hover:bg-gray-100 hover:text-gray-700 '>
+                      Next
+                    </span>
+                  ) : (
+                    <Link
+                      className='rounded-r-lg border border-gray-300 bg-white py-2 px-3 leading-tight text-gray-500 hover:bg-gray-100 hover:text-gray-700 '
+                      to={`/students?page=${page + 1}`}
+                    >
+                      Next
+                    </Link>
+                  )}
                 </li>
               </ul>
             </nav>
