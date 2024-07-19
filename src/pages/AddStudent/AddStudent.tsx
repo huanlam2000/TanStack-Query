@@ -43,15 +43,10 @@ export default function AddStudent() {
       toast.success('Student updated successfully')
     }
   })
-
   const studentQuery = useQuery({
     queryKey: ['student', id],
-    queryFn: ({ signal }) =>
-      getStudent(id as string, { signal }).then((data) => {
-        setFormState(data.data)
-        return data
-      }),
-    enabled: !Number.isNaN(Number(id)),
+    queryFn: () => getStudent(id as string),
+    enabled: !Number.isNaN(id),
     staleTime: 1000 * 10
     // select: (data) => {
     //   if (data.data !== formState) {
