@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom'
-import { getStudents } from '../../apis/Student.api'
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { deleteStudent, getStudent, getStudents } from '../../apis/Student.api'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useQueryString } from 'utils/utils'
 import classNames from 'classnames'
+import { toast } from 'react-toastify'
 
 const STUDENT_PER_PAGE = 10
 
@@ -28,9 +29,45 @@ export default function Students() {
   const totalStudentsCount = Number(data?.headers['x-total-count']) || 0
   const totalPage = Math.ceil(totalStudentsCount / STUDENT_PER_PAGE)
 
+  const queryClient = useQueryClient()
+
+  const deleteStudentMutation = useMutation({
+    mutationFn: (id: number | string) => deleteStudent(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['students', page], exact: true })
+      toast.success(`Student with id = ${id} deleted successfully`)
+    },
+    onError: () => {
+      toast.error('Student deleted failed')
+    }
+  })
+
+  const handleDeleteStudent = (id: string | number) => {
+    deleteStudentMutation.mutate(id)
+  }
+
+  const handlePrefetchOnMouseEnter = (id: number) => {
+    queryClient.cancelQueries({ queryKey: ['student'] })
+
+    queryClient.prefetchQuery({
+      queryKey: ['student', id.toString()],
+      queryFn: () => getStudent(id),
+      staleTime: 10000 * 10
+    })
+  }
+
   return (
     <div>
       <h1 className='text-lg'>Students</h1>
+      <div className='mt-6'>
+        <Link
+          to={'/students/add'}
+          className='me-2 mb-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300'
+        >
+          Add student
+        </Link>
+      </div>
+
       {isLoading && (
         <div role='status' className='mt-6 animate-pulse'>
           <div className='mb-4 h-4  rounded bg-gray-200 dark:bg-gray-700' />
@@ -76,6 +113,7 @@ export default function Students() {
                 {data?.data.map((student) => (
                   <tr
                     key={student.id}
+                    onMouseEnter={() => handlePrefetchOnMouseEnter(student.id)}
                     className='border-b bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-600'
                   >
                     <td className='py-4 px-6'>{student.id}</td>
@@ -83,17 +121,22 @@ export default function Students() {
                       <img src={student.avatar} alt='student' className='h-5 w-5' />
                     </td>
                     <th scope='row' className='whitespace-nowrap py-4 px-6 font-medium text-gray-900 dark:text-white'>
-                      {student.lastName}
+                      {student.last_name}
                     </th>
                     <td className='py-4 px-6'>{student.email}</td>
                     <td className='py-4 px-6 text-right'>
                       <Link
-                        to='/students/1'
+                        to={`/students/${student.id}`}
                         className='mr-5 font-medium text-blue-600 hover:underline dark:text-blue-500'
                       >
                         Edit
                       </Link>
-                      <button className='font-medium text-red-600 dark:text-red-500'>Delete</button>
+                      <button
+                        className='font-medium text-red-600 dark:text-red-500'
+                        onClick={(e) => handleDeleteStudent(student.id)}
+                      >
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 ))}
